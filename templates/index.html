@@ -1,0 +1,559 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Q-Lens · Question Classifier</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Mono:wght@400;500&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,300&display=swap" rel="stylesheet" />
+
+  <style>
+    /* ── Reset & variables ──────────────────────────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:        #0d0f14;
+      --surface:   #13161d;
+      --surface2:  #1b1f2a;
+      --border:    #262b38;
+      --accent:    #4fffb0;
+      --accent2:   #ff6b6b;
+      --accent3:   #ffd166;
+      --txt:       #e8eaf0;
+      --txt-muted: #6b7280;
+      --radius:    14px;
+      --mono:      'DM Mono', monospace;
+    }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      font-family: 'DM Sans', sans-serif;
+      background: var(--bg);
+      color: var(--txt);
+      min-height: 100vh;
+      padding: 0 0 60px;
+    }
+
+    /* ── Header ─────────────────────────────────────────────────────── */
+    header {
+      border-bottom: 1px solid var(--border);
+      padding: 22px 48px;
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      position: sticky;
+      top: 0;
+      background: rgba(13,15,20,.88);
+      backdrop-filter: blur(12px);
+      z-index: 100;
+    }
+
+    .logo-icon {
+      width: 36px; height: 36px;
+      background: var(--accent);
+      border-radius: 8px;
+      display: grid; place-items: center;
+      font-size: 18px; line-height: 1;
+    }
+
+    .logo-text {
+      font-family: 'Syne', sans-serif;
+      font-weight: 800;
+      font-size: 1.25rem;
+      letter-spacing: -.02em;
+    }
+
+    .logo-text span { color: var(--accent); }
+
+    .badge {
+      margin-left: auto;
+      font-family: var(--mono);
+      font-size: .7rem;
+      padding: 4px 10px;
+      border: 1px solid var(--border);
+      border-radius: 99px;
+      color: var(--txt-muted);
+    }
+
+    /* ── Hero ───────────────────────────────────────────────────────── */
+    .hero {
+      padding: 64px 48px 40px;
+      max-width: 900px;
+      margin: 0 auto;
+    }
+
+    .hero h1 {
+      font-family: 'Syne', sans-serif;
+      font-weight: 800;
+      font-size: clamp(2rem, 4vw, 3.2rem);
+      line-height: 1.1;
+      letter-spacing: -.03em;
+      margin-bottom: 14px;
+    }
+
+    .hero h1 em {
+      font-style: normal;
+      color: var(--accent);
+    }
+
+    .hero p {
+      color: var(--txt-muted);
+      font-size: 1.05rem;
+      font-weight: 300;
+      max-width: 560px;
+      line-height: 1.65;
+    }
+
+    /* ── Upload card ─────────────────────────────────────────────────── */
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 32px;
+      max-width: 900px;
+      margin: 0 auto 32px;
+    }
+
+    .card + .card { border-top: none; border-radius: 0 0 var(--radius) var(--radius); }
+
+    .section-label {
+      font-family: var(--mono);
+      font-size: .72rem;
+      letter-spacing: .12em;
+      text-transform: uppercase;
+      color: var(--txt-muted);
+      margin-bottom: 18px;
+    }
+
+    /* Drop zone */
+    .drop-zone {
+      border: 2px dashed var(--border);
+      border-radius: 10px;
+      padding: 40px 24px;
+      text-align: center;
+      cursor: pointer;
+      transition: border-color .2s, background .2s;
+      position: relative;
+    }
+
+    .drop-zone:hover, .drop-zone.drag-over {
+      border-color: var(--accent);
+      background: rgba(79,255,176,.04);
+    }
+
+    .drop-zone input[type="file"] {
+      position: absolute; inset: 0;
+      opacity: 0; cursor: pointer; width: 100%; height: 100%;
+    }
+
+    .drop-icon { font-size: 2.4rem; margin-bottom: 10px; }
+
+    .drop-zone p {
+      color: var(--txt-muted);
+      font-size: .95rem;
+    }
+
+    .drop-zone strong { color: var(--txt); }
+
+    .file-types {
+      display: flex; gap: 8px; justify-content: center;
+      margin-top: 14px; flex-wrap: wrap;
+    }
+
+    .file-chip {
+      font-family: var(--mono);
+      font-size: .7rem;
+      padding: 3px 10px;
+      border-radius: 99px;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      color: var(--txt-muted);
+    }
+
+    /* File list */
+    #file-list {
+      margin-top: 14px;
+      display: flex; flex-wrap: wrap; gap: 8px;
+    }
+
+    .file-pill {
+      display: flex; align-items: center; gap: 6px;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 99px;
+      padding: 4px 12px;
+      font-family: var(--mono);
+      font-size: .75rem;
+      color: var(--txt);
+      animation: pop .2s ease;
+    }
+
+    .file-pill .ext {
+      background: var(--accent);
+      color: #000;
+      border-radius: 4px;
+      padding: 1px 5px;
+      font-size: .65rem;
+      font-weight: 600;
+    }
+
+    @keyframes pop {
+      from { transform: scale(.85); opacity: 0; }
+      to   { transform: scale(1);   opacity: 1; }
+    }
+
+    /* Submit button */
+    .btn {
+      margin-top: 24px;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: var(--accent);
+      color: #000;
+      font-family: 'Syne', sans-serif;
+      font-weight: 700;
+      font-size: .95rem;
+      padding: 13px 30px;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: opacity .15s, transform .15s;
+    }
+
+    .btn:hover   { opacity: .88; transform: translateY(-1px); }
+    .btn:active  { transform: translateY(0); }
+    .btn:disabled { opacity: .4; cursor: not-allowed; }
+
+    /* ── Error banner ────────────────────────────────────────────────── */
+    .error-banner {
+      max-width: 900px;
+      margin: 0 auto 24px;
+      background: rgba(255,107,107,.1);
+      border: 1px solid rgba(255,107,107,.35);
+      border-radius: var(--radius);
+      padding: 16px 24px;
+      color: var(--accent2);
+      font-size: .9rem;
+      display: flex; align-items: center; gap: 10px;
+    }
+
+    /* ── Results ─────────────────────────────────────────────────────── */
+    .results-grid {
+      max-width: 900px;
+      margin: 0 auto;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+    }
+
+    @media (max-width: 620px) {
+      .results-grid { grid-template-columns: 1fr; }
+      header, .hero, .card { padding-left: 20px; padding-right: 20px; }
+    }
+
+    .result-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      overflow: hidden;
+    }
+
+    .result-header {
+      display: flex; align-items: center; gap: 10px;
+      padding: 16px 20px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .result-dot {
+      width: 10px; height: 10px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+
+    .repeated .result-dot { background: var(--accent2); }
+    .rare     .result-dot { background: var(--accent);  }
+
+    .result-title {
+      font-family: 'Syne', sans-serif;
+      font-weight: 700;
+      font-size: .95rem;
+    }
+
+    .result-count {
+      margin-left: auto;
+      font-family: var(--mono);
+      font-size: .75rem;
+      color: var(--txt-muted);
+    }
+
+    .question-list {
+      list-style: none;
+      padding: 12px 0;
+      max-height: 420px;
+      overflow-y: auto;
+    }
+
+    .question-list::-webkit-scrollbar { width: 4px; }
+    .question-list::-webkit-scrollbar-track { background: transparent; }
+    .question-list::-webkit-scrollbar-thumb { background: var(--border); border-radius: 99px; }
+
+    .question-item {
+      padding: 11px 20px;
+      border-bottom: 1px solid var(--border);
+      font-size: .875rem;
+      line-height: 1.55;
+      color: var(--txt);
+      transition: background .15s;
+      display: flex; gap: 10px; align-items: flex-start;
+    }
+
+    .question-item:last-child { border-bottom: none; }
+    .question-item:hover { background: var(--surface2); }
+
+    .q-num {
+      font-family: var(--mono);
+      font-size: .68rem;
+      color: var(--txt-muted);
+      min-width: 22px;
+      padding-top: 2px;
+    }
+
+    .empty-state {
+      padding: 40px 20px;
+      text-align: center;
+      color: var(--txt-muted);
+      font-size: .85rem;
+    }
+
+    /* ── Stats bar ───────────────────────────────────────────────────── */
+    .stats-bar {
+      max-width: 900px;
+      margin: 0 auto 20px;
+      display: flex; gap: 16px; flex-wrap: wrap;
+    }
+
+    .stat {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 14px 20px;
+      flex: 1; min-width: 120px;
+    }
+
+    .stat-value {
+      font-family: 'Syne', sans-serif;
+      font-weight: 800;
+      font-size: 1.9rem;
+      line-height: 1;
+      margin-bottom: 4px;
+    }
+
+    .stat-label {
+      font-size: .75rem;
+      color: var(--txt-muted);
+      font-family: var(--mono);
+    }
+
+    .stat.total  .stat-value { color: var(--txt); }
+    .stat.rep    .stat-value { color: var(--accent2); }
+    .stat.rare   .stat-value { color: var(--accent); }
+
+    /* Loading overlay */
+    #loading {
+      display: none;
+      position: fixed; inset: 0;
+      background: rgba(13,15,20,.7);
+      backdrop-filter: blur(6px);
+      z-index: 999;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 16px;
+    }
+
+    #loading.active { display: flex; }
+
+    .spinner {
+      width: 42px; height: 42px;
+      border: 3px solid var(--border);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin .8s linear infinite;
+    }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    #loading p {
+      font-family: var(--mono);
+      font-size: .85rem;
+      color: var(--txt-muted);
+    }
+  </style>
+</head>
+<body>
+
+<!-- Loading overlay -->
+<div id="loading">
+  <div class="spinner"></div>
+  <p>Analysing questions…</p>
+</div>
+
+<!-- Header -->
+<header>
+  <div class="logo-icon">🔍</div>
+  <div class="logo-text">Q<span>-Lens</span></div>
+  <div class="badge">ML · NLP · OCR</div>
+</header>
+
+<!-- Hero -->
+<div class="hero">
+  <h1>Detect <em>repeated</em><br/>& rare questions</h1>
+  <p>Upload PDF, Word, or image files. The system extracts questions,
+     applies TF-IDF cosine similarity, and classifies each one automatically.</p>
+</div>
+
+<!-- Upload card -->
+<div class="card" style="max-width:900px; margin: 0 auto 24px;">
+  <div class="section-label">Upload Files</div>
+
+  <form method="POST" enctype="multipart/form-data" id="upload-form">
+
+    <div class="drop-zone" id="drop-zone">
+      <input type="file" name="files" id="file-input" multiple accept=".pdf,.docx,.jpg,.jpeg,.png" />
+      <div class="drop-icon">📂</div>
+      <p><strong>Click to browse</strong> or drag & drop files here</p>
+      <div class="file-types">
+        <span class="file-chip">.pdf</span>
+        <span class="file-chip">.docx</span>
+        <span class="file-chip">.jpg</span>
+        <span class="file-chip">.png</span>
+      </div>
+    </div>
+
+    <div id="file-list"></div>
+
+    <button class="btn" type="submit" id="submit-btn" disabled>
+      ⚡ Analyse Questions
+    </button>
+
+  </form>
+</div>
+
+<!-- Error banner -->
+{% if error_message %}
+<div class="error-banner" style="max-width:900px; margin: 0 auto 24px;">
+  ⚠️ {{ error_message }}
+</div>
+{% endif %}
+
+<!-- Results -->
+{% if repeated_questions or rare_questions %}
+{% set total = repeated_questions|length + rare_questions|length %}
+<div class="stats-bar">
+  <div class="stat total">
+    <div class="stat-value">{{ total }}</div>
+    <div class="stat-label">Total Questions</div>
+  </div>
+  <div class="stat rep">
+    <div class="stat-value">{{ repeated_questions|length }}</div>
+    <div class="stat-label">Repeated</div>
+  </div>
+  <div class="stat rare">
+    <div class="stat-value">{{ rare_questions|length }}</div>
+    <div class="stat-label">Rare / Unique</div>
+  </div>
+</div>
+
+<div class="results-grid">
+
+  <!-- Repeated -->
+  <div class="result-card repeated">
+    <div class="result-header">
+      <div class="result-dot"></div>
+      <div class="result-title">Repeated Questions</div>
+      <div class="result-count">{{ repeated_questions|length }} found</div>
+    </div>
+    {% if repeated_questions %}
+    <ul class="question-list">
+      {% for q in repeated_questions %}
+      <li class="question-item">
+        <span class="q-num">{{ loop.index }}</span>
+        <span>{{ q }}</span>
+      </li>
+      {% endfor %}
+    </ul>
+    {% else %}
+    <div class="empty-state">No repeated questions detected.</div>
+    {% endif %}
+  </div>
+
+  <!-- Rare -->
+  <div class="result-card rare">
+    <div class="result-header">
+      <div class="result-dot"></div>
+      <div class="result-title">Rare Questions</div>
+      <div class="result-count">{{ rare_questions|length }} found</div>
+    </div>
+    {% if rare_questions %}
+    <ul class="question-list">
+      {% for q in rare_questions %}
+      <li class="question-item">
+        <span class="q-num">{{ loop.index }}</span>
+        <span>{{ q }}</span>
+      </li>
+      {% endfor %}
+    </ul>
+    {% else %}
+    <div class="empty-state">No rare questions found.</div>
+    {% endif %}
+  </div>
+
+</div>
+{% endif %}
+
+<script>
+  const input    = document.getElementById('file-input');
+  const list     = document.getElementById('file-list');
+  const btn      = document.getElementById('submit-btn');
+  const dropZone = document.getElementById('drop-zone');
+  const form     = document.getElementById('upload-form');
+  const loading  = document.getElementById('loading');
+
+  function renderFiles(files) {
+    list.innerHTML = '';
+    if (!files.length) { btn.disabled = true; return; }
+    btn.disabled = false;
+    [...files].forEach(f => {
+      const ext  = f.name.split('.').pop().toUpperCase();
+      const pill = document.createElement('div');
+      pill.className = 'file-pill';
+      pill.innerHTML = `<span class="ext">${ext}</span>${f.name}`;
+      list.appendChild(pill);
+    });
+  }
+
+  input.addEventListener('change', () => renderFiles(input.files));
+
+  // Drag-and-drop visual feedback
+  dropZone.addEventListener('dragover',  e => { e.preventDefault(); dropZone.classList.add('drag-over'); });
+  dropZone.addEventListener('dragleave', ()  => dropZone.classList.remove('drag-over'));
+  dropZone.addEventListener('drop',      e  => {
+    e.preventDefault();
+    dropZone.classList.remove('drag-over');
+    // Transfer files to the real input
+    const dt = new DataTransfer();
+    [...e.dataTransfer.files].forEach(f => dt.items.add(f));
+    input.files = dt.files;
+    renderFiles(input.files);
+  });
+
+  form.addEventListener('submit', () => {
+    btn.disabled = true;
+    loading.classList.add('active');
+  });
+</script>
+
+</body>
+</html>
